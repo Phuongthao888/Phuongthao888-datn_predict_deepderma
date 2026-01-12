@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Chẩn Đoán Tổn Thương Da - Vision Transformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: #1A202C;
+            background: #F7FAFC;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2C5282 0%, #3182CE 100%);
+            color: white;
+            padding: 32px 40px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E2E8F0;
+        }
+
+        .header h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-section {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E2E8F0;
+            height: fit-content;
+            position: sticky;
+            top: 24px;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #2D3748;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #EDF2F7;
+        }
+
+        .upload-area {
+            border: 2px dashed #CBD5E0;
+            border-radius: 12px;
+            padding: 0;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #FAFBFC;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: #3182CE;
+            background: #F7FAFC;
+        }
+
+        .upload-area.dragover {
+            border-color: #3182CE;
+            background: #EBF8FF;
+            border-style: solid;
+        }
+
+        .upload-placeholder {
+            text-align: center;
+            color: #718096;
+            padding: 40px 20px;
+        }
+
+        .upload-placeholder h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #4A5568;
+        }
+
+        .upload-placeholder p {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 100%;
+            display: none;
+            position: relative;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .preview-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .image-preview:hover .preview-overlay {
+            opacity: 1;
+        }
+
+        .change-image-btn {
+            background: rgba(255, 255, 255, 0.9);
+            color: #2D3748;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .change-image-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        .btn {
+            background: #3182CE;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.05rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin: 16px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            background: #2C5282;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(49, 130, 206, 0.3);
+        }
+
+        .btn:disabled {
+            background: #A0AEC0;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #E2E8F0;
+            color: #4A5568;
+        }
+
+        .btn-secondary:hover {
+            background: #CBD5E0;
+            transform: translateY(-2px);
+        }
+
+        .file-info {
+            background: #EBF8FF;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #3182CE;
+            font-size: 0.95rem;
+        }
+
+        .file-info strong {
+            color: #2D3748;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .result-section {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E2E8F0;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 24px;
+            border-bottom: 3px solid #EDF2F7;
+        }
+
+        .diagnosis-result {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .diagnosis-badge {
+            padding: 16px 28px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            min-width: 160px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .benign {
+            background: linear-gradient(135deg, #38A169, #2F855A);
+        }
+
+        .malignant {
+            background: linear-gradient(135deg, #E53E3E, #C53030);
+        }
+
+        .confidence-meter {
+            flex-grow: 1;
+            max-width: 320px;
+        }
+
+        .confidence-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            color: #4A5568;
+            font-weight: 500;
+        }
+
+        .confidence-bar {
+            height: 16px;
+            background: #EDF2F7;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #38A169, #3182CE);
+            border-radius: 8px;
+            transition: width 1s ease-in-out;
+            box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 4px solid #E2E8F0;
+            border-top: 4px solid #3182CE;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .comprehensive-section {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E2E8F0;
+            margin-top: 32px;
+        }
+
+        .comprehensive-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 28px;
+            flex-wrap: wrap;
+            background: #F7FAFC;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #E2E8F0;
+            margin-bottom: 24px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+            color: #4A5568;
+            font-weight: 500;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-red { background: #FC8181; }
+        .legend-green { background: #68D391; }
+        .legend-blue { background: #4299E1; }
+        .legend-purple { background: #B794F4; }
+        .legend-yellow { background: #F6E05E; }
+
+        .comprehensive-viz {
+            text-align: center;
+            margin: 28px 0;
+            background: #FAFBFC;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #E2E8F0;
+        }
+
+        .comprehensive-viz img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E2E8F0;
+        }
+
+        .interpretation-section {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E2E8F0;
+            margin-top: 32px;
+        }
+
+        .interpretation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .interpretation-card {
+            background: #F7FAFC;
+            padding: 24px;
+            border-radius: 12px;
+            border-left: 4px solid #3182CE;
+            transition: all 0.3s ease;
+            border: 1px solid #E2E8F0;
+        }
+
+        .interpretation-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            border-left: 4px solid #2C5282;
+        }
+
+        .interpretation-card h4 {
+            color: #2D3748;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .interpretation-card p {
+            color: #4A5568;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #718096;
+        }
+
+        .empty-state h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #4A5568;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+        }
+
+        .analysis-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #F7FAFC, #EDF2F7);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #E2E8F0;
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2D3748;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .technical-info {
+            background: linear-gradient(135deg, #EDF2F7, #E2E8F0);
+            padding: 24px;
+            border-radius: 12px;
+            margin-top: 24px;
+            font-size: 0.9rem;
+            color: #4A5568;
+            border: 1px solid #CBD5E0;
+        }
+
+        .technical-info h4 {
+            margin-bottom: 12px;
+            color: #2D3748;
+            font-weight: 700;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #4A5568;
+        }
+
+        .info-value {
+            color: #2D3748;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>HỆ THỐNG CHẨN ĐOÁN TỔN THƯƠNG DA</h1>
+            <p>Vision Transformer - Công cụ hỗ trợ chẩn đoán dựa trên Trí tuệ Nhân tạo</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h2 class="section-title">TẢI ẢNH LÊN</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <!-- Placeholder State -->
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <h3>Tải lên ảnh tổn thương da</h3>
+                        <p>Kéo thả file vào đây hoặc chọn từ thiết bị</p>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                        <button class="btn" onclick="document.getElementById('fileInput').click()">
+                            CHỌN ẢNH
+                        </button>
+                    </div>
+
+                    <!-- Image Preview State -->
+                    <div class="image-preview" id="imagePreview">
+                        <img id="previewImage" src="" alt="Preview">
+                        <div class="preview-overlay">
+                            <button class="change-image-btn" onclick="document.getElementById('fileInput').click()">
+                                THAY ĐỔI ẢNH
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <strong>File đã chọn:</strong>
+                    <span id="fileName"></span>
+                </div>
+
+                <button class="btn" id="analyzeBtn" onclick="analyzeImage()" disabled>
+                    BẮT ĐẦU PHÂN TÍCH
+                </button>
+
+                <div class="loading" id="loadingSection" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Đang phân tích ảnh...</p>
+                    <p style="font-size: 0.95rem; color: #718096; margin-top: 12px;">
+                        Hệ thống đang xử lý và tạo bản đồ giải thích
+                    </p>
+                </div>
+
+                
+            </div>
+
+            <!-- Results Section -->
+            <div class="result-section">
+                <div class="result-header">
+                    <h2 class="section-title">KẾT QUẢ CHẨN ĐOÁN</h2>
+                    <div class="diagnosis-result" id="diagnosisResult" style="display: none;">
+                        <div class="diagnosis-badge" id="diagnosisBadge">
+                            <!-- Kết quả sẽ hiển thị ở đây -->
+                        </div>
+                        <div class="confidence-meter">
+                            <div class="confidence-info">
+                                <span>Độ tin cậy:&nbsp</span>
+                                <span id="confidenceText">0%</span>
+                            </div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidenceFill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="technical-info">
+                    <h4>THÔNG TIN KỸ THUẬT</h4>
+                    <p><strong>Model:</strong> Vision Transformer</p>
+                    <p><strong>Input size:</strong> 32×32 pixels</p>
+                    <p><strong>Patch size:</strong> 8×8</p>
+                    <p><strong>Layers:</strong> 6 | <strong>Heads:</strong> 12</p>
+                </div>
+
+                <div id="resultContent">
+                    <div class="empty-state">
+                        <h3>Chưa có kết quả phân tích</h3>
+                        <p>Vui lòng tải lên ảnh tổn thương da để bắt đầu chẩn đoán</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comprehensive Analysis Section -->
+        <div class="comprehensive-section" id="comprehensiveSection" style="display: none;">
+            <div class="comprehensive-header">
+                <h2 class="section-title">PHÂN TÍCH CHI TIẾT</h2>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-red"></div>
+                    <span>Grad-CAM - Vùng quyết định</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-green"></div>
+                    <span>Attention - Vùng tập trung</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-purple"></div>
+                    <span>Phân tích theo tầng</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-yellow"></div>
+                    <span>Kết hợp Grad-CAM và Attention Map</span>
+                </div>
+            </div>
+
+            <div class="comprehensive-viz">
+                <img id="comprehensiveViz" src="" alt="Phân tích toàn diện">
+            </div>
+
+            <div class="analysis-metrics" id="analysisMetrics" style="display: none;">
+                <!-- Metrics sẽ được thêm bằng JavaScript -->
+            </div>
+        </div>
+
+        <!-- Interpretation Section -->
+        <div class="interpretation-section" id="interpretationSection" style="display: none;">
+            <h2 class="section-title">GIẢI THÍCH KẾT QUẢ</h2>
+            <div class="interpretation-grid" id="interpretationGrid">
+                <!-- Nội dung giải thích sẽ được thêm bằng JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFile = null;
+
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+
+        // Xử lý drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false);
+        });
+
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        // Xử lý chọn file
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                currentFile = files[0];
+                displayImagePreview(currentFile);
+                fileName.textContent = currentFile.name;
+                fileInfo.style.display = 'block';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayImagePreview(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Ẩn placeholder và hiển thị preview
+                uploadPlaceholder.style.display = 'none';
+                imagePreview.style.display = 'block';
+                previewImage.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        // Phân tích ảnh
+        async function analyzeImage() {
+            if (!currentFile) {
+                alert('Vui lòng chọn ảnh trước khi phân tích.');
+                return;
+            }
+
+            // Hiển thị loading
+            document.getElementById('loadingSection').style.display = 'block';
+            analyzeBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayResults(result);
+                } else {
+                    alert('Lỗi phân tích: ' + result.error);
+                }
+            } catch (error) {
+                alert('Lỗi kết nối: ' + error.message);
+            } finally {
+                // Ẩn loading
+                document.getElementById('loadingSection').style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResults(result) {
+            // Hiển thị kết quả chẩn đoán
+            const diagnosisBadge = document.getElementById('diagnosisBadge');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const confidenceText = document.getElementById('confidenceText');
+            const diagnosisResult = document.getElementById('diagnosisResult');
+            
+            diagnosisBadge.textContent = result.prediction === 'Benign' ? 'LÀNH TÍNH' : 'ÁC TÍNH';
+            diagnosisBadge.className = `diagnosis-badge ${result.prediction.toLowerCase()}`;
+            confidenceFill.style.width = `${result.confidence * 100}%`;
+            confidenceText.textContent = `${(result.confidence * 100).toFixed(1)}%`;
+            diagnosisResult.style.display = 'flex';
+
+            // Hiển thị visualization toàn diện
+            document.getElementById('comprehensiveViz').src = result.visualization;
+            document.getElementById('comprehensiveSection').style.display = 'block';
+
+            // Hiển thị metrics
+            displayMetrics(result);
+
+            // Hiển thị giải thích
+            displayInterpretation(result.interpretation);
+
+            // Cập nhật nội dung kết quả
+            document.getElementById('resultContent').innerHTML = `
+                <div style="background: #F0FFF4; padding: 24px; border-radius: 12px; border-left: 4px solid #38A169; margin: 24px 0;">
+                    <h3 style="color: #2F855A; margin-bottom: 12px; font-weight: 600;">Phân tích hoàn tất</h3>
+                    <p style="color: #4A5568;">Hệ thống đã hoàn thành phân tích ảnh với độ tin cậy ${(result.confidence * 100).toFixed(1)}%</p>
+                </div>
+            `;
+
+            // Cuộn xuống phần kết quả
+            document.getElementById('comprehensiveSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayMetrics(result) {
+            const metricsContainer = document.getElementById('analysisMetrics');
+            metricsContainer.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-value">${(result.confidence * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Độ tin cậy</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.raw_prediction > 0.5 ? result.raw_prediction.toFixed(4) : (1 - result.raw_prediction).toFixed(4)}</div>
+                    <div class="metric-label">Giá trị dự đoán</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.prediction === 'Benign' ? '0' : '1'}</div>
+                    <div class="metric-label">Mã phân loại</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">6</div>
+                    <div class="metric-label">Số tầng phân tích</div>
+                </div>
+            `;
+            metricsContainer.style.display = 'grid';
+        }
+
+        function displayInterpretation(interpretation) {
+            const interpretationGrid = document.getElementById('interpretationGrid');
+            interpretationGrid.innerHTML = `
+                <div class="interpretation-card">
+                    <h4>Grad-CAM</h4>
+                    <p>${interpretation.gradcam}</p>
+                </div>
+                <div class="interpretation-card">
+                    <h4>Attention Maps</h4>
+                    <p>${interpretation.attention}</p>
+                </div>
+                <div class="interpretation-card">
+                    <h4>Phân tích đa tầng</h4>
+                    <p>${interpretation.layers}</p>
+                </div>
+            `;
+            document.getElementById('interpretationSection').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
